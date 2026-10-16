@@ -1,3 +1,16 @@
+> [!NOTE]
+> **Steam Deck Gaming Mode fork.** This is an unofficial fork of [OpenNOW](https://github.com/OpenCloudGaming/OpenNOW) with fixes for SteamOS Gaming Mode:
+>
+> - **Launches with Gamescope's Vulkan layer on.** You no longer need `ENABLE_GAMESCOPE_WSI=0`. Bundled FFmpeg 9.0 created its Vulkan queues with a flag that Gamescope's layer can't handle, which crashed OpenNOW at startup.
+> - **HDR works in Gaming Mode.** OpenNOW only looked for HDR through Wayland color management, which Gamescope doesn't offer. It now also uses the HDR output that Gamescope's Vulkan layer provides.
+> - **The UI fills the screen.** It used to open as a 16:9 window that Gamescope letterboxed on the Deck's 16:10 screen.
+>
+> **Install:** download the `.AppImage` from the [latest release](../../releases/latest), mark it executable, and add it to Steam as a non-Steam game. Leave the launch options as `%command%`. For HDR, turn it on in the Deck's display settings, then in OpenNOW under Settings > Stream (HDR10 needs a Performance or Ultimate membership).
+>
+> **Decline in-app updates.** They install the official build, which doesn't have these fixes.
+>
+> Everything below is the original OpenNOW README.
+
 <p align="center">
   <img src="opennow-qt/res/brand/opennow-mark.png" alt="OpenNOW cloud logo" width="96" height="52" />
 </p>

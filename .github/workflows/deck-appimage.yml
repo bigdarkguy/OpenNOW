@@ -13,3 +13,36 @@ jobs:
     uses: ./.github/workflows/qt-build.yml
     with:
       channel: nightly
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: opennow-qt-linux-x64-unsigned
+          path: artifact
+      - name: Create release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          appimage=$(ls artifact/*.AppImage)
+          tag="deck-${GITHUB_RUN_NUMBER}"
+          cat > notes.md <<NOTES
+          Steam Deck build of OpenNOW ${VERSION} with Gaming Mode fixes:
+
+          - Launches in Gaming Mode without \`ENABLE_GAMESCOPE_WSI=0\`.
+          - HDR works in Gaming Mode (turn on HDR in the Deck's display settings first).
+          - The UI fills the screen instead of showing as a letterboxed 16:9 window.
+
+          Download the \`.AppImage\` below, mark it executable, and add it to Steam as a non-Steam game.
+          Built from commit ${GITHUB_SHA}.
+          NOTES
+          gh release create "$tag" "$appimage" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Steam Deck build ${VERSION}" --notes-file notes.md --latest
