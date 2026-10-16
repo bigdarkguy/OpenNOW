@@ -6,6 +6,7 @@
 #include "streaming/rendering/MetalHdrOutput.h"
 #endif
 
+#include <QGuiApplication>
 #include <QQuickWindow>
 #include <QQuickRenderTarget>
 #include <QScreen>
@@ -13,6 +14,28 @@
 #include <rhi/qrhi.h>
 #include <cmath>
 #include <memory>
+
+namespace {
+// Gamescope (Steam Deck Gaming Mode) does not offer wp_color_manager_v1 to
+// clients. It exposes HDR10 through its Vulkan WSI layer instead, which adds
+// HDR10/scRGB surface formats to X11 Vulkan surfaces while HDR is enabled. When
+// running there, trust the Vulkan surface formats instead of the Wayland probe.
+bool gamescopeHdrPath()
+{
+#if defined(Q_OS_LINUX)
+    static const bool enabled = [] {
+        if (qEnvironmentVariableIntValue("OPENNOW_DISABLE_GAMESCOPE_HDR") == 1) return false;
+        if (qEnvironmentVariableIntValue("DISABLE_GAMESCOPE_WSI") == 1) return false;
+        const bool underGamescope = qEnvironmentVariableIsSet("GAMESCOPE_WAYLAND_DISPLAY")
+            || qEnvironmentVariable("XDG_CURRENT_DESKTOP").compare(QLatin1String("gamescope"), Qt::CaseInsensitive) == 0;
+        return underGamescope && QGuiApplication::platformName() == QLatin1String("xcb");
+    }();
+    return enabled;
+#else
+    return false;
+#endif
+}
+}
 
 std::atomic<int> HdrOutput::s_mode{0};
 std::atomic<float> HdrOutput::s_whiteNits{203.0f};
@@ -22,7 +45,7 @@ HdrOutput::HdrOutput(QObject *parent) : QObject(parent)
 {
     m_waylandOutput = std::make_unique<WaylandHdrOutput>();
     connect(m_waylandOutput.get(), &WaylandHdrOutput::changed, this, [this] {
-        if (!m_waylandOutput->state().supported && m_supported) {
+        if (!m_waylandOutput->state().supported && m_supported && !gamescopeHdrPath()) {
             m_supported = false;
             emit changed();
         }
@@ -115,7 +138,7 @@ void HdrOutput::publish(State state)
     QMetaObject::invokeMethod(this, [this, state]() mutable {
         const auto wayland = m_waylandOutput->state();
 #if defined(Q_OS_LINUX)
-        state.supported = state.supported && wayland.supported;
+        state.supported = state.supported && (wayland.supported || gamescopeHdrPath());
 #endif
         DisplayData next;
         if (wayland.supported) {
@@ -185,7 +208,7 @@ void HdrOutput::updateOutput()
                 || (m_outputPass && m_outputPass->matches(d->rhi, sc)))) return;
     const auto waylandOutput = m_waylandOutput->state();
 #if defined(Q_OS_LINUX)
-    const bool platformReady = waylandOutput.supported;
+    const bool platformReady = waylandOutput.supported || gamescopeHdrPath();
 #else
     const bool platformReady = true;
 #endif
