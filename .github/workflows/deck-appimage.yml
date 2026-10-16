@@ -1,0 +1,15 @@
+name: Steam Deck AppImage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/qt-build.yml
+    with:
+      channel: nightly
