@@ -279,13 +279,6 @@ static int runApplicationSession(int argc, char *argv[], QString &restartExecuta
     engine.rootContext()->setContextProperty(u"CoreClient"_s, &coreClient);
     engine.rootContext()->setContextProperty(u"GraphicsDevices"_s, &graphicsDevices);
     engine.rootContext()->setContextProperty(u"HdrOutput"_s, &hdrOutput);
-    // Gamescope (Steam Deck Gaming Mode) scales a windowed client to fit the
-    // output while keeping its aspect ratio, so the default 16:9 window shows
-    // letterboxed on the Deck's 16:10 panel. Fill the output instead.
-    const bool underGamescope = qEnvironmentVariableIsSet("GAMESCOPE_WAYLAND_DISPLAY")
-        || qEnvironmentVariable("XDG_CURRENT_DESKTOP").compare(QLatin1String("gamescope"),
-                                                               Qt::CaseInsensitive) == 0;
-    engine.rootContext()->setContextProperty(u"RunningUnderGamescope"_s, underGamescope);
     engine.rootContext()->setContextProperty(u"MacAwdl"_s, &macAwdl);
 #ifdef OPENNOW_EMBEDDED_STREAMER
     engine.rootContext()->setContextProperty(u"NativeStreamRuntime"_s,
