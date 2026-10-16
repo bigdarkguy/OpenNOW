@@ -412,6 +412,10 @@ ApplicationWindow {
     }
 
     function toggleFullscreen() {
+        // Under Gamescope a window is always shown fullscreen-sized; leaving
+        // fullscreen would only bring the letterboxed 16:9 window back.
+        if (RunningUnderGamescope && window.visibility === ApplicationWindow.FullScreen)
+            return
         const enteringFullscreen = window.visibility !== ApplicationWindow.FullScreen
         if (enteringFullscreen) {
             window.visibilityBeforeFullscreen = window.visibility
@@ -616,6 +620,12 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        if (RunningUnderGamescope) {
+            window.visibilityBeforeFullscreen = ApplicationWindow.FullScreen
+            window.visibilityBeforeSession = ApplicationWindow.FullScreen
+            window.fullscreenRestoreVisibilityBeforeSession = ApplicationWindow.FullScreen
+            Qt.callLater(() => window.showFullScreen())
+        }
         Qt.callLater(() => CoreClient.markUiReady())
         initializeStartupMode()
         updateSessionWindowMode()
@@ -824,6 +834,10 @@ ApplicationWindow {
                 window.syncInputOwnership()
                 if (window.geometryRestored || !ShellStore.settings.windowWidth)
                     return
+                if (RunningUnderGamescope) {
+                    window.geometryRestored = true
+                    return
+                }
                 const settings = ShellStore.settings
                 const hasPosition = typeof settings.windowX === "number"
                     && typeof settings.windowY === "number"
