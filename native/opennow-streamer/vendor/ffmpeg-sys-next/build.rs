@@ -243,6 +243,30 @@ fn fetch() -> io::Result<()> {
     }
 }
 
+/// Do not let FFmpeg opt into VK_KHR_internally_synchronized_queues.
+///
+/// With that extension FFmpeg creates its queues with
+/// VK_DEVICE_QUEUE_CREATE_INTERNALLY_SYNCHRONIZED_BIT_KHR. Queues created with
+/// non-zero flags cannot be fetched with vkGetDeviceQueue
+/// (VUID-vkGetDeviceQueue-flags-01841), which Gamescope's WSI layer (via
+/// vkroots) and Qt both use on the shared device. On RADV this crashed OpenNOW
+/// at startup in Steam Deck Gaming Mode. FFmpeg falls back to its own queue
+/// mutexes when the extension is not enabled.
+fn patch_source() -> io::Result<()> {
+    let path = source().join("libavutil").join("hwcontext_vulkan.c");
+    let Ok(text) = fs::read_to_string(&path) else {
+        return Ok(());
+    };
+    let patched: String = text
+        .split_inclusive('\n')
+        .filter(|line| !line.contains("VK_KHR_INTERNALLY_SYNCHRONIZED_QUEUES_EXTENSION_NAME,"))
+        .collect();
+    if patched != text {
+        fs::write(&path, patched)?;
+    }
+    Ok(())
+}
+
 fn switch(configure: &mut Command, feature: &str, name: &str) {
     let arg = if env::var("CARGO_FEATURE_".to_string() + feature).is_ok() {
         "--enable-"
@@ -1244,6 +1268,7 @@ fn main() {
             }
             fs::create_dir_all(output()).expect("failed to create build directory");
             fetch().unwrap();
+            patch_source().unwrap();
             build(sysroot.as_deref()).unwrap();
         }
 
